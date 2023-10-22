@@ -1,0 +1,69 @@
+#Code
+module UART_TX (
+    input wire clk,       // Clock input
+    input wire reset,     // Reset input
+    input wire start,     // Start bit control
+    input wire [7:0] data_in, // 8-bit data input
+    output wire tx        // Transmitted data output
+);
+reg [10:0] tx_reg;
+reg [3:0]  count;
+
+parameter BIT_TIME = 1041; // For 9600 bps at 100 MHz clock
+
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        tx_reg <= 11'b0;
+        count <= 4'b0;
+
+    end else if (start) begin
+        tx_reg <= {1'b0, data_in, 1'b1};
+        count <= 4'b0;
+    end else if (count < 11) begin
+        tx_reg <= {tx_reg[10:1], tx_reg[0]};
+        count <= count + 1;
+    end
+end
+
+assign tx = tx_reg[0];
+
+endmodule
+
+UART Transmitter (TX) Testbench:
+module UART_TX_TB;
+
+    reg clk;
+    reg reset;
+    reg start;
+    reg [7:0] data_in;
+    wire tx;
+
+    // Instantiate the UART TX module
+    UART_TX uut (
+        .clk(clk),
+        .reset(reset),
+        .start(start),
+        .data_in(data_in),
+        .tx(tx)
+    );
+
+    // Clock generation
+    always begin
+        #5 clk = ~clk;
+    end
+
+    initial begin
+        // Initialize signals
+        clk = 0;
+        reset = 0;
+        start = 0;
+        data_in = 8'b01011011;
+
+        // Reset and start data transmission
+        reset = 1;
+        #10 reset = 0;
+        start = 1;
+        #($finish);
+    end
+
+endmodule
